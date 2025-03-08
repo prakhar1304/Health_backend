@@ -1,0 +1,15 @@
+class ApiResponse
+{   
+    //constructor --> acc to data  override 
+    constructor(statusCode, data , messsage ="Success"  ){
+   
+        this.statusCode = statusCode
+        this.data =data
+        this.messsage = messsage
+        this.success = statusCode <400
+        this.success =  true
+    }
+}
+
+
+export {ApiResponse}
