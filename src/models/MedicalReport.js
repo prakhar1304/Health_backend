@@ -1,21 +1,15 @@
 import mongoose from 'mongoose';
 
-const testSchema = new mongoose.Schema({
-  name: String,
-  value: String,
-  unit: String,
-  range: String,
-  status: String,
-});
-
 const medicalReportSchema = new mongoose.Schema({
-  hospital_name: String,
-  doctor_name: String,
+  title: String,
+  type: String,
+  doctor: String,
   date: String,
-  report_type: String,
-  tests: [testSchema],
+  image: String,
+  hospital: String,
   summary: String,
-  gcsUri: String, // add original file URI
+  additionalDetails: mongoose.Schema.Types.Mixed
 }, { timestamps: true });
 
-export const MedicalReport = mongoose.model("MedicalReport", medicalReportSchema);
+const MedicalReport = mongoose.model("MedicalReport", medicalReportSchema);
+export default MedicalReport;

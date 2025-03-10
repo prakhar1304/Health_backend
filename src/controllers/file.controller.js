@@ -3,15 +3,49 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import { uploadToGCS } from '../utils/gcs.js';
 import { ApiError } from '../utils/ApiError.js';
 import vision from '@google-cloud/vision';
-import fs from 'fs';
+// import fs from 'fs';
 import path from 'path';
 import { fromPath } from 'pdf2pic';
 import { convertTextToStructuredJSON } from '../utils/gemini.js';
-
+import fs from "fs-extra"
+import poppler from "pdf-poppler"
+import Tesseract from "tesseract.js"
+import { uploadOnCloudinary } from "../utils/cloudinary.js"
+import MedicalReport from "../models/MedicalReport.js"
 // Google Vision API Client
 const client = new vision.ImageAnnotatorClient({
   keyFilename: '../../gcp-key.json',
 });
+
+
+// Convert PDF pages to images using poppler
+const convertPDFToImages = async (pdfPath, outputDir) => {
+  const opts = {
+    format: 'jpeg',
+    out_dir: outputDir,
+    out_prefix: path.basename(pdfPath, path.extname(pdfPath)),
+    page: null,
+  };
+
+  try {
+    await poppler.convert(pdfPath, opts);
+    return fs.readdirSync(outputDir).map((file) => path.join(outputDir, file));
+  } catch (err) {
+    console.error('Error converting PDF to images:', err);
+    throw err;
+  }
+};
+
+// OCR using Tesseract.js
+const performOCR = async (imagePath) => {
+  try {
+    const { data: { text } } = await Tesseract.recognize(imagePath, 'eng');
+    return text.trim();
+  } catch (err) {
+    console.error('OCR error:', err);
+    return '';
+  }
+};
 
 const fileUpload = asyncHandler(async (req, res, next) => {
   console.log("Received request body:", req.body);
@@ -32,42 +66,33 @@ const fileUpload = asyncHandler(async (req, res, next) => {
   let extractedText = "";
 
   if (fileExt === '.pdf') {
+
+    // If it's a PDF, use poppler + Tesseract
+    const outputDir = `output/${Date.now()}`;
+    fs.mkdirSync(outputDir, { recursive: true });
+
     try {
-      // Convert PDF to images using pdf2pic
-      const options = {
-        density: 200,
-        saveFilename: "temp_image",
-        savePath: "./temp_images",
-        format: "png",
-        width: 2000,
-        height: 2000,
-      };
+      const imagePaths = await convertPDFToImages(localFilePath, outputDir);
 
-      const convert = fromPath(localFilePath, options);
+      const ocrResults = await Promise.all(imagePaths.map(performOCR));
+      extractedText = ocrResults.join('\n');
 
-      // You can define how many pages to convert (here we're converting all)
-      const numPagesToConvert = 5; // You can set this dynamically if you want to detect total pages
-      const allTextPromises = [];
-
-      for (let page = 1; page <= numPagesToConvert; page++) {
-        const pageResult = await convert(page);
-        const tempImgPath = pageResult.path;
-
-        const [result] = await client.textDetection(tempImgPath);
-        const pageText = result.fullTextAnnotation?.text || "";
-
-        allTextPromises.push(pageText);
-
-        // Cleanup image file
-        fs.unlinkSync(tempImgPath);
+      console.log("image path ", imagePaths[0]);
+      // // ✅ Upload first image to Cloudinary
+      let cloudinaryImageUrl = null;
+      if (imagePaths.length > 0) {
+        const firstImagePath = imagePaths[0];
+        const cloudinaryResponse = await uploadOnCloudinary(firstImagePath);
+        cloudinaryImageUrl = cloudinaryResponse?.secure_url || null;
+        // console.log("cloudinaryResponse", cloudinaryResponse);
       }
 
-      extractedText = allTextPromises.join('\n\n--- Page Break ---\n\n');
-
     } catch (error) {
-      console.error("PDF processing error:", error);
-      throw new ApiError(500, "PDF processing failed");
+      console.error('PDF OCR error:', error);
+      throw new ApiError(500, 'PDF OCR Failed');
     }
+
+
   } else {
     try {
       const [result] = await client.textDetection(localFilePath);
@@ -80,21 +105,49 @@ const fileUpload = asyncHandler(async (req, res, next) => {
 
   // Clean up local file
   fs.unlinkSync(localFilePath);
+  // console.log("link", cloudinaryResponse.url);
 
   // 🔥 Call Gemini API to get structured JSON
   let structuredJson;
   try {
-    structuredJson = await convertTextToStructuredJSON(extractedText);
+    structuredJson = await convertTextToStructuredJSON(extractedText, cloudinaryImageUrl);
   } catch (err) {
     throw new ApiError(500, "Text parsing with Gemini failed");
   }
 
 
 
+  // Save to MongoDB
+  let savedReports = [];
+  try {
+    // Handle both single object and array cases
+    const reportsArray = Array.isArray(structuredJson) ? structuredJson : [structuredJson];
+
+    // Save each report
+    const savePromises = reportsArray.map(async (report) => {
+      // Add summary field if it exists in additionalDetails
+      if (report.additionalDetails && report.additionalDetails.summary) {
+        report.summary = report.additionalDetails.summary;
+        delete report.additionalDetails.summary;
+      }
+
+      const newReport = new MedicalReport(report);
+      return await newReport.save();
+    });
+
+    savedReports = await Promise.all(savePromises);
+    console.log("Reports saved to MongoDB:", savedReports.length);
+  } catch (error) {
+    console.error("MongoDB save error:", error);
+    throw new ApiError(500, "Failed to save medical report to database");
+  }
+
+
   return res.status(200).json(new ApiResponse(200, {
     gcsUri,
     extractedText,
-    structuredJson
+    structuredJson,
+    savedReports
   }, "File uploaded & OCR processed successfully"));
 });
 

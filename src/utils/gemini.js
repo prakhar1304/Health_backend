@@ -2,34 +2,50 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY); // Keep your key in .env
 
-export const convertTextToStructuredJSON = async (text) => {
+export const convertTextToStructuredJSON = async (text, imageUrl = "") => {
     const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
     console.log("text: ", text);
 
     const prompt = `
-You are a medical report formatter. 
-Convert this extracted medical report text into structured JSON in this format:
-{
-  "hospital_name": "",
-  "doctor_name": "",
-  "date": "",
-  "report_type": "",
-  "tests": [
-    {
-      "name": "",
-      "value": "",
-      "unit": "",
-      "range": "",
-      "status": ""
-    }
-  ],
-  "summary": ""
-}
+    You are a medical report formatter.
+    Convert the extracted medical report text into a structured JSON array in this exact format:
+    
+    [
+      {
+        "title": "Report Title",               // e.g., "MRI : Brain", "Thyroid Profile"
+        "type": "Labs | Imaging | Diagnosis",  // Choose one or define appropriately
+        "doctor": "Doctor's Name",
+        "date": "YYYY-MM-DD",
+        "image": "${imageUrl}",                // Use this image link as report image
+        "hospital": "Hospital Name or Details",
+        "summary": "Patient shows normal cardiovascular and respiratory functions. No signs of infection or abnormality found.",
+        "additionalDetails": {
+        // Only include clinical/medical details — symptoms, observations, vitals, test results.
+        // Do NOT include patient name, gender, DOB, age, contact details, etc.
+   
+          "Key1": "Value1",
+          "Key2": "Value2",
+          "Key3": "Value3"
+        }
+      }
+    ]
 
-Text:
-"""${text}"""
-`;
+ 
+    ⚠️ Rules:
+- Keep only medically relevant information in "additionalDetails". No personal info.
+- Add a concise "summary" field with a short readable summary of the diagnosis or condition.
+- If any field is not found in the text, leave it as an empty string.
+- Always return the JSON array (even if there's only one item).
+    
+    🟢 Be consistent with property naming. Only return valid JSON.
+    🟢 Avoid markdown or text outside the array.
+    🟢 Use actual values from the extracted text for each field.
+    🟢 If some values like 'hospital' or 'date' are missing, set them as empty strings.
+    🟢 Keep everything inside a JSON array, even if there is only one report.
+    Text to format:
+    """${text}"""
+    `;
 
 
     // const result = await model.generateContent(prompt);
