@@ -83,8 +83,8 @@ const fileUpload = asyncHandler(async (req, res, next) => {
       if (imagePaths.length > 0) {
         const firstImagePath = imagePaths[0];
         const cloudinaryResponse = await uploadOnCloudinary(firstImagePath);
-        cloudinaryImageUrl = cloudinaryResponse?.secure_url || null;
-        // console.log("cloudinaryResponse", cloudinaryResponse);
+        cloudinaryImageUrl = cloudinaryResponse?.url || "";
+        console.log("cloudinaryResponse", cloudinaryResponse);
       }
 
     } catch (error) {
@@ -110,7 +110,7 @@ const fileUpload = asyncHandler(async (req, res, next) => {
   // 🔥 Call Gemini API to get structured JSON
   let structuredJson;
   try {
-    structuredJson = await convertTextToStructuredJSON(extractedText, cloudinaryImageUrl);
+    structuredJson = await convertTextToStructuredJSON(extractedText);
   } catch (err) {
     throw new ApiError(500, "Text parsing with Gemini failed");
   }
@@ -131,9 +131,14 @@ const fileUpload = asyncHandler(async (req, res, next) => {
         delete report.additionalDetails.summary;
       }
 
+
+      // 👉 Set the image URL (Cloudinary one)
+      // report.image = cloudinaryImageUrl || "";
+
       const newReport = new MedicalReport(report);
       return await newReport.save();
     });
+
 
     savedReports = await Promise.all(savePromises);
     console.log("Reports saved to MongoDB:", savedReports.length);
