@@ -2,10 +2,10 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY); // Keep your key in .env
 
-export const convertTextToStructuredJSON = async (text, imageUrl = "") => {
+export const convertTextToStructuredJSON = async (text, imageUrl) => {
     const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
-    console.log("text: ", text);
+    // console.log("text: ", text);
 
     const prompt = `
     You are a medical report formatter.
@@ -74,7 +74,7 @@ export const convertTextToStructuredJSON = async (text, imageUrl = "") => {
         structuredJsonText = structuredJsonText.trim();
 
         // Log the cleaned text for debugging
-        console.log("Cleaned JSON text:", structuredJsonText.substring(0, 100) + "...");
+        // console.log("Cleaned JSON text:", structuredJsonText.substring(0, 100) + "...");
 
         // Parse JSON
         return JSON.parse(structuredJsonText);

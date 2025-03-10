@@ -48,8 +48,8 @@ const performOCR = async (imagePath) => {
 };
 
 const fileUpload = asyncHandler(async (req, res, next) => {
-  console.log("Received request body:", req.body);
-  console.log("Received files:", req.files);
+  // console.log("Received request body:", req.body);
+  // console.log("Received files:", req.files);
 
   if (!req.files || !req.files.file || req.files.file.length === 0) {
     throw new ApiError(400, "No file uploaded");
@@ -61,9 +61,10 @@ const fileUpload = asyncHandler(async (req, res, next) => {
 
   // Upload to Google Cloud Storage
   const gcsUri = await uploadToGCS(localFilePath, fileName);
-  console.log("File uploaded to GCS:", gcsUri);
+  // console.log("File uploaded to GCS:", gcsUri);
 
   let extractedText = "";
+  let cloudinaryImageUrl = null;
 
   if (fileExt === '.pdf') {
 
@@ -77,14 +78,14 @@ const fileUpload = asyncHandler(async (req, res, next) => {
       const ocrResults = await Promise.all(imagePaths.map(performOCR));
       extractedText = ocrResults.join('\n');
 
-      console.log("image path ", imagePaths[0]);
+      // console.log("image path ", imagePaths[0]);
       // // ✅ Upload first image to Cloudinary
-      let cloudinaryImageUrl = null;
+
       if (imagePaths.length > 0) {
         const firstImagePath = imagePaths[0];
         const cloudinaryResponse = await uploadOnCloudinary(firstImagePath);
         cloudinaryImageUrl = cloudinaryResponse?.url || "";
-        console.log("cloudinaryResponse", cloudinaryResponse);
+
       }
 
     } catch (error) {
@@ -110,11 +111,11 @@ const fileUpload = asyncHandler(async (req, res, next) => {
   // 🔥 Call Gemini API to get structured JSON
   let structuredJson;
   try {
-    structuredJson = await convertTextToStructuredJSON(extractedText);
+    structuredJson = await convertTextToStructuredJSON(extractedText, cloudinaryImageUrl);
   } catch (err) {
     throw new ApiError(500, "Text parsing with Gemini failed");
   }
-
+  console.log("cloudinaryResponse", cloudinaryImageUrl);
 
 
   // Save to MongoDB
@@ -148,12 +149,34 @@ const fileUpload = asyncHandler(async (req, res, next) => {
   }
 
 
+  // await MedicalReport.findByIdAndUpdate(savedReports._id,
+  //   {
+  //     $set:
+  //     {
+  //       image: cloudinaryImageUrl,
+  //     }
+  //   }, { new: true }
+  // )
+
   return res.status(200).json(new ApiResponse(200, {
-    gcsUri,
-    extractedText,
-    structuredJson,
     savedReports
   }, "File uploaded & OCR processed successfully"));
 });
 
-export { fileUpload };
+
+
+// Get all medical reports
+const getAllReports = asyncHandler(async (req, res) => {
+  try {
+    const reports = await MedicalReport.find().sort({ createdAt: -1 }); // Optional: sort by latest
+    return res.status(200).json(new ApiResponse(200, reports, "All medical reports fetched successfully"));
+  } catch (error) {
+    console.error("Error fetching reports:", error);
+    throw new ApiError(500, "Failed to fetch medical reports from database");
+  }
+});
+
+
+
+
+export { fileUpload, getAllReports };
