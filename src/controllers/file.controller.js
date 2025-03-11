@@ -12,9 +12,17 @@ import poppler from "pdf-poppler"
 import Tesseract from "tesseract.js"
 import { uploadOnCloudinary } from "../utils/cloudinary.js"
 import MedicalReport from "../models/MedicalReport.js"
+
+// Check if GCP key file exists
+if (!fs.existsSync(process.env.GOOGLE_APPLICATION_CREDENTIALS)) {
+  console.error('GCP key file not found at:', process.env.GOOGLE_APPLICATION_CREDENTIALS);
+  process.exit(1); // Exit if the file is not found
+}
+
+
 // Google Vision API Client
 const client = new vision.ImageAnnotatorClient({
-  keyFilename: '../../gcp-key.json',
+  keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS,
 });
 
 const cleanupOutputDirectory = async (directory) => {
