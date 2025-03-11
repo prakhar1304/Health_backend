@@ -146,3 +146,4 @@ dist
 
 # GCP service account key
 gcp-key.json
+gcp-key-base64.txt
