@@ -1,0 +1,12 @@
+{
+    "ignore": [
+      "node_modules",
+      ".env",
+      "package-lock.json",
+      "public",
+      "logs",
+      "*.log"
+    ],
+    "watch": ["src"]
+  }
+  

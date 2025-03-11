@@ -1,6 +1,7 @@
 import express from "express"
 import cors from "cors";
 import cookieParser from "cookie-parser";
+import fs from 'fs'
 
 // Decode Google Cloud JSON Key (only if it exists)
 if (process.env.GOOGLE_CLOUD_KEY_BASE64) {
