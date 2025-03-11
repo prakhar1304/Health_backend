@@ -5,9 +5,7 @@ import dotenv from "dotenv"
 //dotenv.config(); // No need to specify path if your .env is in the root directory
 dotenv.config({ path: "./.env" });
 
-if (process.platform === 'linux') {
-    throw new Error('linux is NOT supported');
-}
+
 
 //when  a  async  process is ende  it  return a promoise
 connectDB()
