@@ -5,7 +5,6 @@ import { ApiError } from '../utils/ApiError.js';
 import vision from '@google-cloud/vision';
 // import fs from 'fs';
 import path from 'path';
-import { fromPath } from 'pdf2pic';
 import { convertTextToStructuredJSON } from '../utils/gemini.js';
 import fs from "fs-extra"
 import poppler from "pdf-poppler"
