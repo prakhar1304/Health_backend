@@ -1,8 +1,11 @@
 import { Storage } from '@google-cloud/storage';
 import path from 'path';
 
+
+const fileName = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+
 const storage = new Storage({
-  keyFilename: '../../gcp-key.json', // Path to your JSON file
+  keyFilename: fileName, // Path to your JSON file
 });
 
 const BUCKET_NAME = process.env.GOOGLE_CLOUD_BUCKET_NAME;
