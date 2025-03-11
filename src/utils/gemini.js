@@ -23,20 +23,28 @@ export const convertTextToStructuredJSON = async (text, imageUrl) => {
         "additionalDetails": {
         // Only include clinical/medical details — symptoms, observations, vitals, test results.
         // Do NOT include patient name, gender, DOB, age, contact details, etc.
+        // Only include essential and medically relevant information:
+        // - Symptoms, observations, vitals, test results, diagnosis, etc.
+        // - Avoid anything irrelevant like personal info, or N/A fields.
+        // - Keep it concise, providing only the necessary details. 
+        // - value  does not  need  to be always  one word short paragraph (concised) , can  use sentences points also (depend on the data)
+        
    
-          "Key1": "Value1",
-          "Key2": "Value2",
-          "Key3": "Value3"
+          "Key1": "Value1",    // For example: "Blood Pressure": "120/80"
+          "Key2": "Value2",    // For exapmle: "Problem List": "Atrial fibrillation , Chest pain,Diverticulosis of colon ,Partial colectomy (history)"
+          "Key3": "Value3"     // For exapmle: "Findings": "Lorem ipsum dolor sit amet",
         }
       }
     ]
 
  
     ⚠️ Rules:
+- keep  title  to  2 to 3  words  max 
 - Keep only medically relevant information in "additionalDetails". No personal info.
 - Add a concise "summary" field with a short readable summary of the diagnosis or condition.
 - If any field is not found in the text, leave it as an empty string.
 - Always return the JSON array (even if there's only one item).
+- For the "type" field, choose one from ["Hospitalization", "Procedure", "Pathology", "Genetic Testing", "Outpatient", "Labs", "Imaging"] based on the report context.
     
     🟢 Be consistent with property naming. Only return valid JSON.
     🟢 Avoid markdown or text outside the array.

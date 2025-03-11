@@ -17,6 +17,17 @@ const client = new vision.ImageAnnotatorClient({
   keyFilename: '../../gcp-key.json',
 });
 
+const cleanupOutputDirectory = async (directory) => {
+  try {
+    if (fs.existsSync(directory)) {
+      await fs.remove(directory);
+      console.log(`Cleaned up directory: ${directory}`);
+    }
+  } catch (error) {
+    console.error(`Error cleaning up directory ${directory}:`, error);
+  }
+};
+
 
 // Convert PDF pages to images using poppler
 const convertPDFToImages = async (pdfPath, outputDir) => {
@@ -59,17 +70,18 @@ const fileUpload = asyncHandler(async (req, res, next) => {
   const fileName = path.basename(localFilePath);
   const fileExt = path.extname(localFilePath).toLowerCase();
 
-  // Upload to Google Cloud Storage
+
   const gcsUri = await uploadToGCS(localFilePath, fileName);
-  // console.log("File uploaded to GCS:", gcsUri);
+
 
   let extractedText = "";
   let cloudinaryImageUrl = null;
+  let outputDir = '';
 
   if (fileExt === '.pdf') {
 
     // If it's a PDF, use poppler + Tesseract
-    const outputDir = `output/${Date.now()}`;
+    outputDir = `output/${Date.now()}`;
     fs.mkdirSync(outputDir, { recursive: true });
 
     try {
@@ -78,8 +90,7 @@ const fileUpload = asyncHandler(async (req, res, next) => {
       const ocrResults = await Promise.all(imagePaths.map(performOCR));
       extractedText = ocrResults.join('\n');
 
-      // console.log("image path ", imagePaths[0]);
-      // // ✅ Upload first image to Cloudinary
+
 
       if (imagePaths.length > 0) {
         const firstImagePath = imagePaths[0];
@@ -106,9 +117,9 @@ const fileUpload = asyncHandler(async (req, res, next) => {
 
   // Clean up local file
   fs.unlinkSync(localFilePath);
-  // console.log("link", cloudinaryResponse.url);
 
-  // 🔥 Call Gemini API to get structured JSON
+
+  //  Using Gemini API to  structured JSON
   let structuredJson;
   try {
     structuredJson = await convertTextToStructuredJSON(extractedText, cloudinaryImageUrl);
@@ -124,17 +135,13 @@ const fileUpload = asyncHandler(async (req, res, next) => {
     // Handle both single object and array cases
     const reportsArray = Array.isArray(structuredJson) ? structuredJson : [structuredJson];
 
-    // Save each report
+    // Save kardo  each  report
     const savePromises = reportsArray.map(async (report) => {
       // Add summary field if it exists in additionalDetails
       if (report.additionalDetails && report.additionalDetails.summary) {
         report.summary = report.additionalDetails.summary;
         delete report.additionalDetails.summary;
       }
-
-
-      // 👉 Set the image URL (Cloudinary one)
-      // report.image = cloudinaryImageUrl || "";
 
       const newReport = new MedicalReport(report);
       return await newReport.save();
@@ -144,8 +151,12 @@ const fileUpload = asyncHandler(async (req, res, next) => {
     savedReports = await Promise.all(savePromises);
     console.log("Reports saved to MongoDB:", savedReports.length);
   } catch (error) {
-    console.error("MongoDB save error:", error);
+    // console.error("MongoDB save error:", error);
+    if (outputDir) {
+      await cleanupOutputDirectory(outputDir);
+    }
     throw new ApiError(500, "Failed to save medical report to database");
+
   }
 
 
@@ -157,6 +168,11 @@ const fileUpload = asyncHandler(async (req, res, next) => {
   //     }
   //   }, { new: true }
   // )
+
+
+  if (outputDir) {
+    await cleanupOutputDirectory(outputDir);
+  }
 
   return res.status(200).json(new ApiResponse(200, {
     savedReports
