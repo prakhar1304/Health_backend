@@ -19,10 +19,11 @@ if (!fs.existsSync(process.env.GOOGLE_APPLICATION_CREDENTIALS)) {
   process.exit(1); // Exit if the file is not found
 }
 
+const fileName = process.env.GOOGLE_APPLICATION_CREDENTIALS;
 
 // Google Vision API Client
 const client = new vision.ImageAnnotatorClient({
-  keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS,
+  keyFilename: fileName,
 });
 
 const cleanupOutputDirectory = async (directory) => {
