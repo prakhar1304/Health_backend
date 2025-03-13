@@ -6,7 +6,7 @@ import vision from '@google-cloud/vision';
 // import fs from 'fs';
 import path from 'path';
 import { convertTextToStructuredJSON } from '../utils/gemini.js';
-import fs from "fs"
+import fs from "fs-extra"
 import poppler from "pdf-poppler"
 import Tesseract from "tesseract.js"
 import { uploadOnCloudinary } from "../utils/cloudinary.js"
