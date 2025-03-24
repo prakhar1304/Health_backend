@@ -2,6 +2,7 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 
+//process.cwd() gives you the current working directory — that’s usually the root directory of your project (where your package.json is located).
 // Define temp upload directory
 const uploadPath = path.join(process.cwd(), "public", "temp");
 
